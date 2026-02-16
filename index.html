@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="작업기록">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <title>작업기록</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+      background: #f2f2f7;
+      color: #1c1c1e;
+      padding-bottom: 90px;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      padding: 24px 20px 20px;
+      text-align: center;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 13px; opacity: 0.6; margin-top: 4px; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      padding: 16px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stat-card .number { font-size: 26px; font-weight: 700; color: #1a1a2e; }
+    .stat-card .label { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+    .section-title {
+      padding: 20px 16px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8e8e93;
+      text-transform: uppercase;
+    }
+    .card-list { padding: 0 16px; }
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.15s;
+    }
+    .card:active { transform: scale(0.98); }
+    .card .info h3 { font-size: 15px; font-weight: 600; }
+    .card .info p { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    .badge {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-green { color: #34c759; background: #eafbef; }
+    .badge-blue { color: #007aff; background: #e8f0fe; }
+    .badge-orange { color: #ff9500; background: #fff4e6; }
+
+    /* 기록 추가 모달 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #f2f2f7;
+      width: 100%;
+      max-height: 85vh;
+      border-radius: 14px 14px 0 0;
+      padding: 20px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+    .modal label { font-size: 13px; color: #8e8e93; display: block; margin: 12px 0 6px; }
+    .modal input, .modal select {
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 10px;
+      background: white;
+      font-size: 16px;
+      font-family: inherit;
+      -webkit-appearance: none;
+    }
+    .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-buttons button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-cancel { background: #e5e5ea; color: #1c1c1e; }
+    .btn-save { background: #1a1a2e; color: white; }
+
+    .fab {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 26px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      cursor: pointer;
+      z-index: 50;
+      transition: transform 0.15s;
+    }
+    .fab:active { transform: scale(0.92); }
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 20px;
+      border-top: 0.5px solid #d1d1d6;
+      z-index: 50;
+    }
+    .nav-item {
+      text-align: center;
+      font-size: 10px;
+      color: #8e8e93;
+      cursor: pointer;
+      transition: color 0.15s;
+      background: none;
+      border: none;
+      font-family: inherit;
+    }
+    .nav-item.active { color: #007aff; }
+    .nav-item .icon { font-size: 24px; display: block; margin-bottom: 2px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #8e8e93;
+    }
+    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 id="headerTitle">작업기록</h1>
+    <p id="headerDate"></p>
+  </div>
+
+  <div id="page-home">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="number" id="statTotal">0</div>
+        <div class="label">이번 달 작업</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="statAvg">-</div>
+        <div class="label">평균(분)</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="statCount">0</div>
+        <div class="label">오늘 작업</div>
+      </div>
+    </div>
+
+    <div class="section-title">최근 기록</div>
+    <div class="card-list" id="recentList"></div>
+  </div>
+
+  <div id="page-list" style="display:none">
+    <div class="section-title">전체 기록</div>
+    <div class="card-list" id="allList"></div>
+  </div>
+
+  <div id="page-stats" style="display:none">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="number" id="sTotal">0</div>
+        <div class="label">총 작업 수</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="sAvg">-</div>
+        <div class="label">평균 시간</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="sBest">-</div>
+        <div class="label">최단 기록</div>
+      </div>
+    </div>
+    <div class="section-title">작업 유형별</div>
+    <div class="card-list" id="statsByType"></div>
+  </div>
+
+  <button class="fab" onclick="openModal()">+</button>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2>작업 기록 추가</h2>
+      <label>차종</label>
+      <input type="text" id="inputCar" placeholder="예: 소나타 DN8">
+      <label>작업 유형</label>
+      <select id="inputType">
+        <option>외부세차</option>
+        <option>내부세차</option>
+        <option>광택 1단계</option>
+        <option>광택 2단계</option>
+        <option>풀코스</option>
+      </select>
+      <label>소요 시간 (분)</label>
+      <input type="number" id="inputTime" placeholder="예: 40">
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-save" onclick="saveRecord()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-item active" onclick="showPage('home', this)">
+      <span class="icon">🏠</span>홈
+    </button>
+    <button class="nav-item" onclick="showPage('list', this)">
+      <span class="icon">📋</span>기록
+    </button>
+    <button class="nav-item" onclick="showPage('stats', this)">
+      <span class="icon">📊</span>통계
+    </button>
+  </nav>
+
+  <script>
+    // 날짜 표시
+    const now = new Date();
+    const days = ['일','월','화','수','목','금','토'];
+    document.getElementById('headerDate').textContent =
+      `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${days[now.getDay()]}요일`;
+
+    // 데이터 관리
+    function getRecords() {
+      return JSON.parse(localStorage.getItem('records') || '[]');
+    }
+    function saveRecords(records) {
+      localStorage.setItem('records', JSON.stringify(records));
+    }
+
+    // 화면 전환
+    function showPage(page, el) {
+      document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none');
+      document.getElementById('page-' + page).style.display = 'block';
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+      render();
+    }
+
+    // 모달
+    function openModal() {
+      document.getElementById('modal').classList.add('active');
+    }
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+      document.getElementById('inputCar').value = '';
+      document.getElementById('inputTime').value = '';
+    }
+
+    // 저장
+    function saveRecord() {
+      const car = document.getElementById('inputCar').value.trim();
+      const type = document.getElementById('inputType').value;
+      const time = parseInt(document.getElementById('inputTime').value);
+      if (!car || !time) return alert('차종과 시간을 입력해주세요');
+      const records = getRecords();
+      records.unshift({
+        car, type, time,
+        date: new Date().toISOString(),
+        id: Date.now()
+      });
+      saveRecords(records);
+      closeModal();
+      render();
+    }
+
+    // 삭제
+    function deleteRecord(id) {
+      if (!confirm('삭제할까요?')) return;
+      const records = getRecords().filter(r => r.id !== id);
+      saveRecords(records);
+      render();
+    }
+
+    // 카드 만들기
+    function makeCard(r) {
+      const d = new Date(r.date);
+      const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+      const badgeClass = r.type.includes('광택') ? 'badge-blue' :
+                         r.type.includes('풀코스') ? 'badge-orange' : 'badge-green';
+      return `<div class="card" onclick="deleteRecord(${r.id})">
+        <div class="info">
+          <h3>${r.car}</h3>
+          <p>${r.type} · ${dateStr}</p>
+        </div>
+        <span class="badge ${badgeClass}">${r.time}분</span>
+      </div>`;
+    }
+
+    // 렌더링
+    function render() {
+      const records = getRecords();
+      const today = new Date().toDateString();
+      const todayRecords = records.filter(r => new Date(r.date).toDateString() === today);
+      const thisMonth = records.filter(r => {
+        const d = new Date(r.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+
+      // 홈
+      document.getElementById('statTotal').textContent = thisMonth.length;
+      document.getElementById('statCount').textContent = todayRecords.length;
+      if (thisMonth.length > 0) {
+        const avg = Math.round(thisMonth.reduce((s,r) => s + r.time, 0) / thisMonth.length);
+        document.getElementById('statAvg').textContent = avg;
+      }
+      const recent = records.slice(0, 5);
+      document.getElementById('recentList').innerHTML = recent.length
+        ? recent.map(makeCard).join('')
+        : '<div class="empty-state"><div class="emoji">🚗</div><p>+ 버튼을 눌러 첫 작업을 기록하세요</p></div>';
+
+      // 전체 기록
+      document.getElementById('allList').innerHTML = records.length
+        ? records.map(makeCard).join('')
+        : '<div class="empty-state"><div class="emoji">📋</div><p>기록이 없습니다</p></div>';
+
+      // 통계
+      document.getElementById('sTotal').textContent = records.length;
+      if (records.length > 0) {
+        const avg = Math.round(records.reduce((s,r) => s + r.time, 0) / records.length);
+        const best = Math.min(...records.map(r => r.time));
+        document.getElementById('sAvg').textContent = avg + '분';
+        document.getElementById('sBest').textContent = best + '분';
+
+        const types = {};
+        records.forEach(r => { types[r.type] = (types[r.type] || 0) + 1; });
+        document.getElementById('statsByType').innerHTML = Object.entries(types)
+          .sort((a,b) => b[1] - a[1])
+          .map(([type, count]) => `<div class="card">
+            <div class="info"><h3>${type}</h3><p>${count}건</p></div>
+            <span class="badge badge-blue">${Math.round(count/records.length*100)}%</span>
+          </div>`).join('');
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
